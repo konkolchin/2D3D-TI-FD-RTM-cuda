@@ -5,7 +5,7 @@ HIPCC ?= hipcc
 ARCH ?=
 
 vti2d_FD_RTM: Toa_gpu2DvtiFdRtmAdcigsLaplace.hip
-	$(HIPCC) -O3 $(ARCH) -o $@ $<
+	$(HIPCC) -O3 -Wno-unused-result $(ARCH) -o $@ $<
 
 clean:
 	rm -f vti2d_FD_RTM
