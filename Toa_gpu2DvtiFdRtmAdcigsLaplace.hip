@@ -51,19 +51,19 @@ void print_error(const char *message)
 void print_warning(const char *message)
 {
     if(message )
-        printf(ANSI_YELLOW "  [Warning]  "ANSI_RESET "%s",message);
+        printf(ANSI_YELLOW "  [Warning]  " ANSI_RESET "%s",message);
 }
 /*printf info message*/
 void print_info(const char *message)
 {
     if(message )
-        printf(ANSI_CYAN "     [Info]  "ANSI_RESET "%s", message);
+        printf(ANSI_CYAN "     [Info]  " ANSI_RESET "%s", message);
 }
 /*print success message*/
 void print_success(const char* message)
 {
     if(message )
-        printf(ANSI_GREEN "  [Success]  "ANSI_RESET "%s", message);
+        printf(ANSI_GREEN "  [Success]  " ANSI_RESET "%s", message);
 }
 #ifdef pi
 #pragma message("Already define pi !!!")
