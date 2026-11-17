@@ -1,0 +1,18 @@
+/home/kvkol/2D3D-TI-FD-RTM-cuda
+[36m     [Info]  [0mThe ./vti2d_FD_RTM Starting...
+[36m     [Info]  [0mFD starting...
+[32m  [Success]  [0mLoad (v,e,d) successfully.
+[36m     [Info]  [0m   Velocity Range (2000.0 - 2000.0)[m/s]
+[36m     [Info]  [0m    Epsilon Range (0.0000 - 0.0000)
+[36m     [Info]  [0m      Delta Range (0.0000 - 0.0000)
+[32m  [Success]  [0mCheck gpu successfully.
+[32m  [Success]  [0mCheck gpu successfully.
+[36m     [Info]  [0mIS =  1/5 [=====                    ] 20%, 0.000408 min
+[36m     [Info]  [0mIS =  2/5 [==========               ] 40%, 0.000399 min
+[36m     [Info]  [0mIS =  3/5 [===============          ] 60%, 0.000400 min
+[36m     [Info]  [0mIS =  4/5 [====================     ] 80%, 0.000398 min
+[36m     [Info]  [0mIS =  5/5 [=========================]100%, 0.000398 min
+[32m  [Success]  [0mFinish Finite Difference
+[36m     [Info]  [0mThe ./vti2d_FD_RTM Finished... 
+[36m     [Info]  [0mTotal 5 shots: 0.008485 (min)
+[32m  [Success]  [0mDone！ File in:
