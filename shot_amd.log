@@ -1,0 +1,18 @@
+/home/amd/2D3D-TI-FD-RTM-cuda
+     [Info]  The ./vti2d_FD_RTM Starting...
+     [Info]  FD starting...
+  [Success]  Load (v,e,d) successfully.
+     [Info]     Velocity Range (2000.0 - 2000.0)[m/s]
+     [Info]      Epsilon Range (0.0000 - 0.0000)
+     [Info]        Delta Range (0.0000 - 0.0000)
+  [Success]  Check gpu successfully.
+  [Success]  Check gpu successfully.
+     [Info]  IS =  1/5 [=====                    ] 20%, 0.001005 min
+     [Info]  IS =  2/5 [==========               ] 40%, 0.000698 min
+     [Info]  IS =  3/5 [===============          ] 60%, 0.000691 min
+     [Info]  IS =  4/5 [====================     ] 80%, 0.000691 min
+     [Info]  IS =  5/5 [=========================]100%, 0.000698 min
+  [Success]  Finish Finite Difference
+     [Info]  The ./vti2d_FD_RTM Finished...
+     [Info]  Total 5 shots: 0.005477 (min)
+  [Success]  Done！ File in:

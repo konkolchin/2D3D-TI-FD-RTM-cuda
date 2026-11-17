@@ -1,4 +1,5 @@
-NVCC := /usr/local/cuda-12.9/bin/nvcc
+# Override if nvcc is not on PATH: make NVCC=/usr/local/cuda/bin/nvcc vti2d_FD_RTM
+NVCC ?= nvcc
 
 TARGETS := tti2d_acousticFD
 TARGETS += tti2d_acousticRTM
