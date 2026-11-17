@@ -1,14 +1,19 @@
-"""Write colormap images for the kind=1 outputs.
+"""Write colormap images for kind=1 shot files.
 
-    python3 colormap.py
+One machine:
+    python3 colormap.py shot.dat
 
-Reads shot.dat (pressure at the receivers) and, when present,
-illumination.dat (accumulated P^2+Q^2 on the grid). Writes PPM images
-next to those files. No extra Python packages.
+Both machines, one shared color scale, for the manager slide:
+    python3 colormap.py shot_nvidia.dat shot_amd.dat
+
+Writes <name>.ppm for each shot file. With a single file, also writes
+illumination_colormap.ppm when illumination.dat is present.
+PPM needs no extra Python packages.
 """
 
 import math
 import struct
+import sys
 from pathlib import Path
 
 NT = 2001
@@ -58,8 +63,7 @@ def write_ppm(path, width, height, rgb):
     print(f"wrote {path}  {width}x{height}")
 
 
-def shot_image(samples):
-    level = clip_level(samples)
+def shot_image(samples, path, level):
     width = NS * NX
     pixels = []
     for it in range(NT):
@@ -67,7 +71,7 @@ def shot_image(samples):
             for ix in range(NX):
                 value = samples[(shot * NX + ix) * NT + it]
                 pixels.append(seismic(value / level))
-    write_ppm("shot_colormap.ppm", width, NT, pixels)
+    write_ppm(path, width, NT, pixels)
 
 
 def illumination_image(samples):
@@ -81,11 +85,13 @@ def illumination_image(samples):
 
 
 def main():
-    shot = load_f32("shot.dat", NS * NT * NX)
-    shot_image(shot)
-    illum_path = Path("illumination.dat")
-    if illum_path.is_file():
-        illumination_image(load_f32(illum_path, NX * NZ))
+    names = sys.argv[1:] or ["shot.dat"]
+    shots = [load_f32(name, NS * NT * NX) for name in names]
+    level = clip_level([v for shot in shots for v in shot])
+    for name, shot in zip(names, shots):
+        shot_image(shot, str(Path(name).with_suffix(".ppm")), level)
+    if names == ["shot.dat"] and Path("illumination.dat").is_file():
+        illumination_image(load_f32("illumination.dat", NX * NZ))
 
 
 if __name__ == "__main__":
