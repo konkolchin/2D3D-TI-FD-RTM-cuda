@@ -103,6 +103,7 @@ const char *note[] = {
 "                 =2 Reverse Time Migration[RTM]                              ",
 "    For example:                                                          ",
 "    ./a.out  kind=1     Finite difference forward modeling[FD]                   ",
+"    ./a.out  kind=1 ns=1  one shot; ns defaults to 5                          ",
 "    ./a.out  kind=2     Reverse Time Migration[RTM]                              ",
 "                         no space in 'kind=1'                            ",
 "                                                                               ",
@@ -1711,6 +1712,13 @@ int main(int argc,char *argv[])
     dt=0.001;
 
     ns=5;
+    if (argc >= 3) {
+        if (sscanf(argv[2], "ns=%d", &ns) != 1 || ns < 1) {
+            sprintf(msg, "Optional second argument is ns=<positive integer>, for example ns=1.\n");
+            print_error(msg);
+            exit(0);
+        }
+    }
     fs=nx/ns/2;
     ds=nx/ns;
     zs=1;

@@ -16,3 +16,23 @@
      [Info]  The ./vti2d_FD_RTM Finished...
      [Info]  Total 5 shots: 0.005477 (min)
   [Success]  Done！ File in:
+
+Stage 1 gate, kind=1 ns=1, anisotropic waxian files (velocity 2000 m/s, epsilon 0.2, delta 0.1).
+kind=2 was not run.
+
+Radeon RX 7900 XTX (gfx1100), ROCR_VISIBLE_DEVICES=GPU-3b0e1119eaef27ea
+  wall clock 0.18 s
+  program line: Total 1 shots: 0.002702 (min)
+
+NVIDIA GeForce RTX 4080
+  wall clock 0.33 s
+  program line: Total 1 shots: 0.004704 (min)
+
+compare_shots.py shot_nvidia.dat shot_amd.dat
+  shots 1
+  samples 402201
+  peak 6.35326
+  max abs diff 4.57764e-05  (0.0007% of peak)
+  rms diff 6.29444e-06  (0.0001% of peak)
+  samples that differ 339041
+  OK  (pass: max abs diff <= 1% of peak)
