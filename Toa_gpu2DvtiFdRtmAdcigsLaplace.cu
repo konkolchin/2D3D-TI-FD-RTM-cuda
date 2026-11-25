@@ -866,7 +866,7 @@ void adcigs_smiled(int nx,
     int ix,iz,ia,id,ido;
     float *temp;
 
-    temp = (float*)malloc(nz*nx/dAdcigs*nangle*sizeof(float));
+    temp = (float*)malloc((((nx - 1) / dAdcigs) + 1) * nangle * nz * sizeof(float));
 
     for (ix=0; ix<nx; ix++)  {
         for (ia=0; ia<nangle; ia++)  {

@@ -1,0 +1,86 @@
+Gate 2: 2-D VTI RTM, kind=2 ns=1
+Command: ./vti2d_FD_RTM kind=2 ns=1
+Model: anisotropic waxian 201x201, velocity 2000 m/s, epsilon 0.2, delta 0.1
+Scored file: migration.dat after laplace_filter. adcigs.dat kept and not scored.
+The smile buffer now holds the last decimated column, so the NVIDIA process flushes the image.
+Radeon RX 7900 XTX gfx1100: wall 0.28 s, program Total 1 shots: 0.004504 (min)
+RTX 4080: wall 0.43 s, program Total 1 shots: 0.006372 (min)
+samples 40401
+peak 0.333692
+max abs diff 0.00144061 (0.4317% of peak)
+rms diff 1.13855e-05 (0.0034% of peak)
+OK
+
+Gate 3a: 3-D VTI forward, vti3Dfd, one shot
+Command: ./vti3Dfd
+Model: generated 301x301x201 two-layer, 2000/2400 m/s, epsilon 0.2, delta 0.1. The loader keeps those anisotropy values.
+Scored file: waxian_shot_1501_iso_mute.dat
+Radeon RX 7900 XTX gfx1100: wall 10.73 s, program total 1 shots: 15.736451 (s)
+RTX 4080: wall 18.78 s, program total 1 shots: 17.594208 (s)
+samples 135992101
+peak 0.00347047
+max abs diff 2.14321e-07 (0.0062% of peak)
+rms diff 2.67677e-09 (0.0001% of peak)
+OK
+
+Gate 3b: 3-D VTI RTM, vti3Drtm ns=1
+Command: ./vti3Drtm ns=1
+Model: generated 201x201x201 two-layer, 2000/2400 m/s, epsilon 0.2, delta 0.1. Default ns remains 625.
+Scored file: waxian_migration_laplace.dat. adcigs not scored.
+Radeon RX 7900 XTX gfx1100: wall 16.68 s, program total 1 shots: 0.297446 (min)
+RTX 4080: wall 27.80 s, program total 1 shots: 0.448408 (min)
+samples 8120601
+peak 0.635293
+max abs diff 9.53674e-07 (0.0002% of peak)
+rms diff 4.98982e-08 (0.0000% of peak)
+OK
+
+Gate 4a: TTI acoustic forward, tti2d_acousticFD
+Command: ./tti2d_acousticFD
+Model: generated 600x300 two-layer, 2000/2400 m/s, epsilon 0.2, delta 0.1, theta 15 degrees. Opened names are thrust_*_711_300.dat.
+Scored file: thrust_shot_unstable.dat
+Radeon RX 7900 XTX gfx1100: wall 0.18 s, program total 1 shots: 0.039398 (s)
+RTX 4080: wall 0.36 s, program total 1 shots: 0.025031 (s)
+samples 480600
+peak 0.101282
+max abs diff 1.11759e-07 (0.0001% of peak)
+rms diff 3.15667e-09 (0.0000% of peak)
+OK
+
+Gate 4b: TTI acoustic RTM, tti2d_acousticRTM ns=1
+Command: ./tti2d_acousticRTM ns=1
+Model: generated 1700x601 two-layer, 2000/2400 m/s, epsilon 0.2, delta 0.1, theta 15 degrees. Default ns remains 340.
+Scored file: BP_migration.dat after laplace_filter. adcigs not scored.
+Radeon RX 7900 XTX gfx1100: wall 3.97 s, program total 1 shots: 0.10 (min)
+RTX 4080: wall 4.95 s, program total 1 shots: 0.08 (min)
+samples 1021700
+peak 0.109263
+max abs diff 0.119347 (109.2288% of peak)
+rms diff 0.000229555 (0.2101% of peak)
+FAIL
+The samples above 0.001 are 17 surface points at the source (ix around 850, iz 0 and 1). The modeled shot from the same run is within 0.0090% of peak.
+
+Gate 4c: 2-D VTI Poynting ADCIGs, nangle=70, dangle=1
+Command: ./vti2d_FD_RTM kind=2 ns=1
+Scored file: adcigs.dat from the gate 2 run. Not part of the gate 2 pass.
+Radeon RX 7900 XTX gfx1100: wall 0.28 s, program Total 1 shots: 0.004504 (min)
+RTX 4080: wall 0.43 s, program Total 1 shots: 0.006372 (min)
+samples 2828070
+peak 0.0721091
+max abs diff 0.0529973 (73.4960% of peak)
+rms diff 5.49214e-05 (0.0762% of peak)
+FAIL
+131 samples differ by more than 0.001. They sit on iz=0, and the energy is in a neighboring angle bin.
+
+Gate 4d: elastic TTI forward, tti2d_elasticFD ns=1
+Command: ./tti2d_elasticFD ns=1
+Model: generated 711x300 two-layer, 2000/2400 m/s, epsilon 0.2, delta 0.1, theta 15 degrees. Shear velocity is vp/2 inside read_file. Default ns remains 350.
+Scored file: thrust_shot_stable.dat
+Radeon RX 7900 XTX gfx1100: wall 1.02 s, program total 1 shots: 0.950340 (s)
+RTX 4080: wall 1.00 s, program total 1 shots: 0.779434 (s)
+samples 2489211
+peak 70.5911
+max abs diff 0.00247574 (0.0035% of peak)
+rms diff 0.000273899 (0.0004% of peak)
+OK
+

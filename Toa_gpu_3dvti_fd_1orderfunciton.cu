@@ -269,8 +269,8 @@ void read_file(char FN1[],char FN2[],char FN3[],int nx,int ny,int nz,int nnx,int
 			 {
                              id=iz+ix*nnz+iy*nnz*nnx;
 				 fread(&vv[id],4L,1,fp1);//vv[id]=3000.0;
-				 fread(&epsilon[id],4L,1,fp2);epsilon[id] *= 0.0;//epsilon[id] = (epsilon[id]-3000)/800.0*0.25;
-				 fread(&delta[id],4L,1,fp3);delta[id] *= 0.0;//delta[id] = (delta[id]-3000)/800.0*0.1;
+				 fread(&epsilon[id],4L,1,fp2);//epsilon[id] = (epsilon[id]-3000)/800.0*0.25;
+				 fread(&delta[id],4L,1,fp3);//delta[id] = (delta[id]-3000)/800.0*0.1;
 			 }
 		 }
 		 fclose(fp1);

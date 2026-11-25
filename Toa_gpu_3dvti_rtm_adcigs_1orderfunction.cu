@@ -749,6 +749,13 @@ int main(int argc,char *argv[])
     dsy=8;//ny/ns;//0;//ny/ns;
     zs=1;
 
+    if (argc >= 2) {
+        if (sscanf(argv[1], "ns=%d", &ns) != 1 || ns < 1) {
+            printf("Optional argument is ns=<positive integer>, for example ns=1.\n");
+            exit(0);
+        }
+    }
+
     na=65;
     da=1;
     dcdp=1;

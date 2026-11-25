@@ -602,6 +602,12 @@ int main(int argc,char *argv[])
     dt=0.0005;
 
     ns=340;
+    if (argc >= 2) {
+        if (sscanf(argv[1], "ns=%d", &ns) != 1 || ns < 1) {
+            printf("Optional argument is ns=<positive integer>, for example ns=1.\n");
+            exit(0);
+        }
+    }
     fs=nx/ns/2;
     ds=nx/ns;
     zs=1;
