@@ -1,0 +1,20 @@
+# Host build of the two RTM programs. The GPU makefiles are unchanged.
+CXX ?= g++
+CXXFLAGS := -O3 -std=c++17 -DCPU_REF -Wno-unused-result
+OUTDIR := cpu_build
+
+.PHONY: all clean
+
+all: $(OUTDIR)/vti2d_FD_RTM $(OUTDIR)/tti2d_acousticRTM
+
+$(OUTDIR):
+	mkdir -p $(OUTDIR)
+
+$(OUTDIR)/vti2d_FD_RTM: Toa_gpu2DvtiFdRtmAdcigsLaplace.cu cpu_backend.h | $(OUTDIR)
+	$(CXX) -x c++ $(CXXFLAGS) -o $@ Toa_gpu2DvtiFdRtmAdcigsLaplace.cu -lm
+
+$(OUTDIR)/tti2d_acousticRTM: Toa_gpu_2dtti_rtm_adcigs_1orderfunciton.cu cpu_backend.h | $(OUTDIR)
+	$(CXX) -x c++ $(CXXFLAGS) -o $@ Toa_gpu_2dtti_rtm_adcigs_1orderfunciton.cu -lm
+
+clean:
+	rm -rf $(OUTDIR)

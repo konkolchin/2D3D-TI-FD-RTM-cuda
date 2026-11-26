@@ -31,7 +31,7 @@ z*/
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <cuda_runtime.h>
+#include "cpu_backend.h"
 
 #define ANSI_CYAN    "\x1b[36m"
 #define ANSI_GREEN   "\x1b[32m"
@@ -49,19 +49,19 @@ void print_error(const char *message)
 void print_warning(const char *message)
 {
     if(message )
-        printf(ANSI_YELLOW "  [Warning]  "ANSI_RESET "%s",message);
+        printf(ANSI_YELLOW "  [Warning]  " ANSI_RESET "%s",message);
 }
 /*printf info message*/
 void print_info(const char *message)
 {
     if(message )
-        printf(ANSI_CYAN "     [Info]  "ANSI_RESET "%s", message);
+        printf(ANSI_CYAN "     [Info]  " ANSI_RESET "%s", message);
 }
 /*print success message*/
 void print_success(const char* message)
 {
     if(message )
-        printf(ANSI_GREEN "  [Success]  "ANSI_RESET "%s", message);
+        printf(ANSI_GREEN "  [Success]  " ANSI_RESET "%s", message);
 }
 #ifdef pi
 #pragma message("Already define pi !!!")
@@ -105,6 +105,7 @@ const char *note[] = {
 "    ./a.out  kind=1     Finite difference forward modeling[FD]                   ",
 "    ./a.out  kind=1 ns=1  one shot; ns defaults to 5                          ",
 "    ./a.out  kind=2     Reverse Time Migration[RTM]                              ",
+"    ./a.out  kind=2 ns=1 nangle=70 dangle=1 dAdcigs=25                        ",
 "                         no space in 'kind=1'                            ",
 "                                                                               ",
 " \033[1;31mInner Parameters:\033[m                                    ",
@@ -141,9 +142,9 @@ NULL
 };
 
 
-__device__ float d0;
+RTM_DEVICE float d0;
 
-__global__ void get_d0(float dx,
+RTM_GLOBAL void get_d0(float dx,
                        float dz,
                        int nnx,
                        int nnz,
@@ -154,7 +155,7 @@ __global__ void get_d0(float dx,
     d0 = 10.0*vp[nnx*nnz/2]*log(100000.0)/(2.0*npml*((dx+dz)/2.0));
 }
 /*#define mm 4*/
-__constant__ float c[mm]={1.196289,-0.0797526,0.009570313,-0.0006975447};
+RTM_CONSTANT float c[mm]={1.196289,-0.0797526,0.009570313,-0.0006975447};
 
 void mBar(float fBar)
 /* show progress bar */
@@ -240,7 +241,7 @@ void laplace_filter(int adj,
     }
 }
 
-__global__ void add_source( float pfac,
+RTM_GLOBAL void add_source( float pfac,
                             float xsn,
                             float zsn,
                             int nx,
@@ -292,7 +293,7 @@ __global__ void add_source( float pfac,
     }
 }
 
-__global__ void update_vel(int nx,
+RTM_GLOBAL void update_vel(int nx,
                            int nz,
                            int nnx,
                            int nnz,
@@ -339,7 +340,7 @@ __global__ void update_vel(int nx,
     }
 }
 
-__global__ void update_stress(int nx,
+RTM_GLOBAL void update_stress(int nx,
                               int nz,
                               int nnx,
                               int nnz,
@@ -491,7 +492,7 @@ void pad_vv(int nx,
 /**
  * Calculate the PML coefficient
  */
-__global__ void initial_coffe(float dt,
+RTM_GLOBAL void initial_coffe(float dt,
                               int nn,
                               float *coff1,
                               float *coff2,
@@ -539,7 +540,7 @@ __global__ void initial_coffe(float dt,
  *           or
  *   (nx,nt) >> (nx)
  */
-__global__ void shot_record(int nnx,
+RTM_GLOBAL void shot_record(int nnx,
                             int nnz,
                             int nx,
                             int nz,
@@ -571,7 +572,7 @@ __global__ void shot_record(int nnx,
  * Record or backword the boundary wave field
  *
  */
-__global__ void wavefield_bndr(int nnx,
+RTM_GLOBAL void wavefield_bndr(int nnx,
                                int nnz,
                                int nx,
                                int nz,
@@ -652,7 +653,7 @@ __global__ void wavefield_bndr(int nnx,
 /**
  *mute direct waves
  */
-__global__ void mute_directwave(int nx,
+RTM_GLOBAL void mute_directwave(int nx,
                                 int nt,
                                 float dt,
                                 float favg,
@@ -692,7 +693,7 @@ __global__ void mute_directwave(int nx,
 /**
  * illumination matrix
  */
-__global__ void cal_illumination(int nnx,
+RTM_GLOBAL void cal_illumination(int nnx,
                                  int nnz,
                                  int nz,
                                  int npml,
@@ -704,7 +705,7 @@ __global__ void cal_illumination(int nnx,
     int ix = id/nz;
     int iz = id%nz;
 
-    if(id < nnx*nnz) {
+    if(id < (nnx - 2 * npml) * nz) {
 
         illumination[id] += P[iz+npml+nnz*(ix+npml)] * P[iz+npml+nnz*(ix+npml)]
                            +Q[iz+npml+nnz*(ix+npml)] * Q[iz+npml+nnz*(ix+npml)];
@@ -717,7 +718,7 @@ __global__ void cal_illumination(int nnx,
 /**
  * RTM migration
  */
-__global__ void cal_migration(int nnx,
+RTM_GLOBAL void cal_migration(int nnx,
                               int nnz,
                               int nz,
                               int npml,
@@ -729,7 +730,7 @@ __global__ void cal_migration(int nnx,
     int ix = id/nz;
     int iz = id%nz;
 
-    if(id<nnx*nnz) {
+    if(id < (nnx - 2 * npml) * nz) {
 
         migration[id] += s[iz+npml+nnz*(ix+npml)] * g[iz+npml+nnz*(ix+npml)];
     }
@@ -738,7 +739,7 @@ __global__ void cal_migration(int nnx,
 /**
  *  illuminate
  */
-__global__ void migration_illum(int nx,
+RTM_GLOBAL void migration_illum(int nx,
                                 int nz,
                                 int npml,
                                 float *migration,
@@ -756,7 +757,7 @@ __global__ void migration_illum(int nx,
  *  poynting vector extraction ADCIGs
  *    "Copyright(C) Madagascar:user/pyang/Mrtmadcig.c"
  */
-__global__ void Poynting_Adcigs(int nnz,
+RTM_GLOBAL void Poynting_Adcigs(int nnz,
                                 int nx,
                                 int nz,
                                 int npml,
@@ -806,7 +807,7 @@ __global__ void Poynting_Adcigs(int nnz,
 /**
  *  illuminate the adcigs
  */
-__global__ void adcigs_illum(int nx,
+RTM_GLOBAL void adcigs_illum(int nx,
                              int nz,
                              int nangle,
                              int dangle,
@@ -938,9 +939,9 @@ void readFile( char FNvelocity[],
 
             id=i*nnz+j;
                                   /* inch time 0.3 */
-            fread(&v[id],4L,1,fp1);//v[id] *= 0.3;
-            fread(&e[id],4L,1,fp2);
-            fread(&d[id],4L,1,fp3);
+            rtm_read_samples(fp1, &v[id], 1);//v[id] *= 0.3;
+            rtm_read_samples(fp2, &e[id], 1);
+            rtm_read_samples(fp3, &d[id], 1);
 
             /* For Parameters Sensitivity Analysis */
             //if(true) // true: active
@@ -1122,9 +1123,9 @@ void FD( char FNvelocity[],
     check_gpu_error("Failed to allocate memory for variables!");
 
     /* calculate d0 and pml adsorb coffe */
-    get_d0<<<1, 1>>>(dx, dz, nnx, nnz, npml, vp);
-    initial_coffe<<<(nnx+511)/512, 512>>>(dt,nx,coffx1,coffx2,acoffx1,acoffx2,npml);
-    initial_coffe<<<(nnz+511)/512, 512>>>(dt,nz,coffz1,coffz2,acoffz1,acoffz2,npml);
+    RTM_LAUNCH(get_d0, 1, 1, dx, dz, nnx, nnz, npml, vp);
+    RTM_LAUNCH(initial_coffe, (nnx+511)/512, 512, dt,nx,coffx1,coffx2,acoffx1,acoffx2,npml);
+    RTM_LAUNCH(initial_coffe, (nnz+511)/512, 512, dt,nz,coffz1,coffz2,acoffz1,acoffz2,npml);
 
     /* set Imaging to zero */
     cudaMemset(illumination, 0, nz*nx*sizeof(float));
@@ -1153,37 +1154,32 @@ void FD( char FNvelocity[],
         /* forward */
         for(it=0,t=dt; it<nt; it++,t+=dt) {
 
-            add_source<<<1,1>>>(pfac, fs,zs,nx,nz,nnx,nnz,dt,t,favg,wtype,npml,is,ds,s_P,s_Q);
-            update_vel<<<(nnx*nnz+511)/512, 512>>>
-                        (nx,nz,nnx,nnz,npml,dt,dx,dz,
+            RTM_LAUNCH(add_source, 1, 1, pfac, fs,zs,nx,nz,nnx,nnz,dt,t,favg,wtype,npml,is,ds,s_P,s_Q);
+            RTM_LAUNCH(update_vel, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,npml,dt,dx,dz,
                          s_u0,s_w0,s_u1,s_w1,s_P,s_Q,coffx1,coffx2,coffz1,coffz2);
-            update_stress<<<(nnx*nnz+511)/512, 512>>>
-                          (nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
+            RTM_LAUNCH(update_stress, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
                            s_px1,s_px0,s_pz1,s_pz0,s_qx1,s_qx0,s_qz1,s_qz0,
                            acoffx1,acoffx2,acoffz1,acoffz2,delta,epsilon,fs,ds,zs,is,false);
             s_u0 = s_u1;   s_w0 = s_w1;
             s_px0 = s_px1; s_pz0 = s_pz1;
             s_qx0 = s_qx1; s_qz0 = s_qz1;
 
-            shot_record<<<(nx+511)/512, 512>>>
-                        (nnx, nnz, nx, nz, npml, it, nt, s_P, shot_Dev, true);
-            cal_illumination<<<(nx*nz+511)/512, 512>>>
-                        (nnx, nnz, nz, npml, illumination, s_P, s_Q);
+            RTM_LAUNCH(shot_record, (nx+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, s_P, shot_Dev, true);
+            RTM_LAUNCH(cal_illumination, (nx*nz+511)/512, 512, nnx, nnz, nz, npml, illumination, s_P, s_Q);
 
             if(writeSnap && (it%300==0)) {
                 cudaMemcpy(e, s_P, nnz*nnx*sizeof(float), cudaMemcpyDeviceToHost);
                 for(int i = npml; i<nnx-npml; i++)
                     for(int j = npml; j<nnz-npml; j++)
-                        fwrite(&e[i*nnz+j], 4L, 1, fpSnap);
+                        rtm_write_samples(fpSnap, &e[i*nnz+j], 1);
             }
 
         }//it
 
-        mute_directwave<<<(nt+511)/512, 512>>>
-                        (nx,nt,dt,favg,dx,dz,fs,ds,zs,is,vp,epsilon,shot_Dev,100);
+        RTM_LAUNCH(mute_directwave, (nt+511)/512, 512, nx,nt,dt,favg,dx,dz,fs,ds,zs,is,vp,epsilon,shot_Dev,100);
 
         cudaMemcpy(shot_Hos, shot_Dev, nt*nx*sizeof(float), cudaMemcpyDeviceToHost);
-        fwrite(shot_Hos,sizeof(float),nt*nx,fpCalShot);
+        rtm_write_samples(fpCalShot, shot_Hos, nt*nx);
 
         time = clock() - time;
         printf(", %f min\n", ((float)time)/60.0/CLOCKS_PER_SEC);
@@ -1192,7 +1188,7 @@ void FD( char FNvelocity[],
 
     /* output multi-shot illumination */
     cudaMemcpy(e, illumination, nz*nx*sizeof(float), cudaMemcpyDeviceToHost);
-    fwrite(e,sizeof(float),nx*nz,fpIllunmination);
+    rtm_write_samples(fpIllunmination, e, nx*nz);
 
 
     /* file close */
@@ -1380,9 +1376,9 @@ void RTM(char FNvelocity[],
     check_gpu_error("Failed to allocate memory for variables!");
 
     /* calculate d0 and pml adsorb coffe */
-    get_d0<<<1, 1>>>(dx, dz, nnx, nnz, npml, vp);
-    initial_coffe<<<(nnx+511)/512, 512>>>(dt,nx,coffx1,coffx2,acoffx1,acoffx2,npml);
-    initial_coffe<<<(nnz+511)/512, 512>>>(dt,nz,coffz1,coffz2,acoffz1,acoffz2,npml);
+    RTM_LAUNCH(get_d0, 1, 1, dx, dz, nnx, nnz, npml, vp);
+    RTM_LAUNCH(initial_coffe, (nnx+511)/512, 512, dt,nx,coffx1,coffx2,acoffx1,acoffx2,npml);
+    RTM_LAUNCH(initial_coffe, (nnz+511)/512, 512, dt,nz,coffz1,coffz2,acoffz1,acoffz2,npml);
 
     /* set Imaging to zero */
     cudaMemset(migration, 0, nz*nx*sizeof(float));
@@ -1424,59 +1420,50 @@ void RTM(char FNvelocity[],
         /* forward */
         for(it=0,t=dt; it<nt; it++,t+=dt) {
 
-            add_source<<<1,1>>>(pfac, fs,zs,nx,nz,nnx,nnz,dt,t,favg,wtype,npml,is,ds,s_P,s_Q);
-            update_vel<<<(nnx*nnz+511)/512, 512>>>
-                        (nx,nz,nnx,nnz,npml,dt,dx,dz,
+            RTM_LAUNCH(add_source, 1, 1, pfac, fs,zs,nx,nz,nnx,nnz,dt,t,favg,wtype,npml,is,ds,s_P,s_Q);
+            RTM_LAUNCH(update_vel, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,npml,dt,dx,dz,
                          s_u0,s_w0,s_u1,s_w1,s_P,s_Q,coffx1,coffx2,coffz1,coffz2);
-            update_stress<<<(nnx*nnz+511)/512, 512>>>
-                          (nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
+            RTM_LAUNCH(update_stress, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
                            s_px1,s_px0,s_pz1,s_pz0,s_qx1,s_qx0,s_qz1,s_qz0,
                            acoffx1,acoffx2,acoffz1,acoffz2,delta,epsilon,fs,ds,zs,is,true);
             s_u0 = s_u1;   s_w0 = s_w1;
             s_px0 = s_px1; s_pz0 = s_pz1;
             s_qx0 = s_qx1; s_qz0 = s_qz1;
 
-            shot_record<<<(nx+511)/512, 512>>>
-                        (nnx, nnz, nx, nz, npml, it, nt, s_P, shot_Dev, true);
-            wavefield_bndr<<<((2*nx+2*nz)+511)/512,512>>>
-                        (nnx, nnz, nx, nz, npml, it, nt, s_P, s_Q, P_bndr, Q_bndr, true);
-            cal_illumination<<<(nx*nz+511)/512, 512>>>
-                        (nnx, nnz, nz, npml, illumination, s_P, s_Q);
+            RTM_LAUNCH(shot_record, (nx+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, s_P, shot_Dev, true);
+            RTM_LAUNCH(wavefield_bndr, ((2*nx+2*nz)+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, s_P, s_Q, P_bndr, Q_bndr, true);
+            RTM_LAUNCH(cal_illumination, (nx*nz+511)/512, 512, nnx, nnz, nz, npml, illumination, s_P, s_Q);
 
             if(writeSnap && (it%300==0)) {
                 cudaMemcpy(e, s_P, nnz*nnx*sizeof(float), cudaMemcpyDeviceToHost);
                 for(int i = npml; i<nnx-npml; i++)
                     for(int j = npml; j<nnz-npml; j++)
-                        fwrite(&e[i*nnz+j], 4L, 1, fpSnap);
+                        rtm_write_samples(fpSnap, &e[i*nnz+j], 1);
             }
 
         }//it
 
-        mute_directwave<<<(nt+511)/512, 512>>>
-                        (nx,nt,dt,favg,dx,dz,fs,ds,zs,is,vp,epsilon,shot_Dev,100);
+        RTM_LAUNCH(mute_directwave, (nt+511)/512, 512, nx,nt,dt,favg,dx,dz,fs,ds,zs,is,vp,epsilon,shot_Dev,100);
 
         if(readShot) {
 
-            fread(shot_Hos,sizeof(float),nt*nx,fpObsShot);
+            rtm_read_samples(fpObsShot, shot_Hos, nt*nx);
             cudaMemcpy(shot_Dev, shot_Hos, nt*nx*sizeof(float), cudaMemcpyHostToDevice);
 
         } else {
 
             cudaMemcpy(shot_Hos, shot_Dev, nt*nx*sizeof(float), cudaMemcpyDeviceToHost);
-            fwrite(shot_Hos,sizeof(float),nt*nx,fpCalShot);
+            rtm_write_samples(fpCalShot, shot_Hos, nt*nx);
         }
 
         /* backward */
         for(it=nt-1; it>=0; it--) {
 
             /* source wavefield */
-            wavefield_bndr<<<((2*nx+2*nz)+511)/512,512>>>
-                            (nnx, nnz, nx, nz, npml, it, nt, s_P, s_Q, P_bndr, Q_bndr, false);
-            update_vel<<<(nnx*nnz+511)/512, 512>>>
-                            (nx,nz,nnx,nnz,npml,dt,dx,dz,
+            RTM_LAUNCH(wavefield_bndr, ((2*nx+2*nz)+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, s_P, s_Q, P_bndr, Q_bndr, false);
+            RTM_LAUNCH(update_vel, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,npml,dt,dx,dz,
                              s_u0,s_w0,s_u1,s_w1,s_P,s_Q,coffx1,coffx2,coffz1,coffz2);
-            update_stress<<<(nnx*nnz+511)/512, 512>>>
-                            (nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
+            RTM_LAUNCH(update_stress, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
                              s_px1,s_px0,s_pz1,s_pz0,s_qx1,s_qx0,s_qz1,s_qz0,
                              acoffx1,acoffx2,acoffz1,acoffz2,delta,epsilon,fs,ds,zs,is,false);
             s_u0=s_u1;   s_w0=s_w1;
@@ -1487,21 +1474,17 @@ void RTM(char FNvelocity[],
                 cudaMemcpy(e, s_P, nnz*nnx*sizeof(float), cudaMemcpyDeviceToHost);
                 for(int i=npml;i<nnx-npml;i++)
                     for(int j=npml;j<nnz-npml;j++)
-                        fwrite(&e[i*nnz+j],4L,1,fpSnap);
+                        rtm_write_samples(fpSnap, &e[i*nnz+j], 1);
             }
 
 
 
             /* receivers wavefield */
-            shot_record<<<(nx+511)/512, 512>>>
-                        (nnx, nnz, nx, nz, npml, it, nt, g_P, shot_Dev, false);
-            shot_record<<<(nx+511)/512, 512>>>
-                        (nnx, nnz, nx, nz, npml, it, nt, g_Q, shot_Dev, false);
-            update_vel<<<(nnx*nnz+511)/512, 512>>>
-                        (nx,nz,nnx,nnz,npml,dt,dx,dz,
+            RTM_LAUNCH(shot_record, (nx+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, g_P, shot_Dev, false);
+            RTM_LAUNCH(shot_record, (nx+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, g_Q, shot_Dev, false);
+            RTM_LAUNCH(update_vel, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,npml,dt,dx,dz,
                          g_u0,g_w0,g_u1,g_w1,g_P,g_Q,coffx1,coffx2,coffz1,coffz2);
-            update_stress<<<(nnx*nnz+511)/512, 512>>>
-                            (nx,nz,nnx,nnz,dt,dx,dz,g_u1,g_w1,g_P,g_Q,vp,npml,
+            RTM_LAUNCH(update_stress, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,dt,dx,dz,g_u1,g_w1,g_P,g_Q,vp,npml,
                              g_px1,g_px0,g_pz1,g_pz0,g_qx1,g_qx0,g_qz1,g_qz0,
                              acoffx1,acoffx2,acoffz1,acoffz2,
                              delta,epsilon,fs,ds,zs,is,false);
@@ -1513,14 +1496,12 @@ void RTM(char FNvelocity[],
                 cudaMemcpy(e, g_P, nnz*nnx*sizeof(float), cudaMemcpyDeviceToHost);
                 for(int i=npml;i<nnx-npml;i++)
                     for(int j=npml;j<nnz-npml;j++)
-                        fwrite(&e[i*nnz+j],4L,1,fpSnap);
+                        rtm_write_samples(fpSnap, &e[i*nnz+j], 1);
             }
 
-            cal_migration<<<(nx*nz+511)/512, 512>>>
-                            (nnx, nnz, nz, npml, migration, s_P, g_P);
+            RTM_LAUNCH(cal_migration, (nx*nz+511)/512, 512, nnx, nnz, nz, npml, migration, s_P, g_P);
 
-            Poynting_Adcigs<<<(nx*nz+511)/512, 512>>>
-                            (nnz, nx, nz, npml, nangle, dangle, adcigs,
+            RTM_LAUNCH(Poynting_Adcigs, (nx*nz+511)/512, 512, nnz, nx, nz, npml, nangle, dangle, adcigs,
                              s_P, s_Q, s_u0, s_w0, g_P, g_Q, g_u0, g_w0);
 
         }//it
@@ -1530,30 +1511,30 @@ void RTM(char FNvelocity[],
 
     }//is
 
-    migration_illum<<<(nx*nz+511)/512, 512>>>(nx, nz, npml, migration, illumination);
+    RTM_LAUNCH(migration_illum, (nx*nz+511)/512, 512, nx, nz, npml, migration, illumination);
 
-    adcigs_illum<<<(nx*nz*nangle+511)/512, 512>>>(nx, nz, nangle, dangle, adcigs, illumination);
+    RTM_LAUNCH(adcigs_illum, (nx*nz*nangle+511)/512, 512, nx, nz, nangle, dangle, adcigs, illumination);
 
     /* output multi-shot migration */
     cudaMemcpy(e, migration, nz*nx*sizeof(float), cudaMemcpyDeviceToHost);
     laplace_filter(1,nz,nx,e,d);
-    fwrite(d,sizeof(float),nx*nz,fpMigration);
+    rtm_write_samples(fpMigration, d, nx*nz);
 
     /* output multi-shot illumination */
     cudaMemcpy(e, illumination, nz*nx*sizeof(float), cudaMemcpyDeviceToHost);
-    fwrite(e,sizeof(float),nx*nz,fpIllunmination);
+    rtm_write_samples(fpIllunmination, e, nx*nz);
 
     /* output multi-shot adcigs */
     cudaMemcpy(Atemp, adcigs, nz*nx*nangle*sizeof(float), cudaMemcpyDeviceToHost);
-    fwrite(Atemp,sizeof(float),nz*nx*nangle,fpAdcigs);
+    rtm_write_samples(fpAdcigs, Atemp, nz*nx*nangle);
 
     /* output adcigs stk migration */
     stk_adcigs(nx,nz,nangle,Atemp,d);
-    fwrite(d,sizeof(float),nx*nz,fpStkAdcigs);
+    rtm_write_samples(fpStkAdcigs, d, nx*nz);
 
     /* output smiled adcigs */
     adcigs_smiled(nx,nz,nangle,dAdcigs,Atemp);
-    fwrite(Atemp,sizeof(float),nz*nx/dAdcigs*nangle,fpIntervalAdcigs);
+    rtm_write_samples(fpIntervalAdcigs, Atemp, nz*nx/dAdcigs*nangle);
 
 
     /* file close */
@@ -1629,7 +1610,7 @@ int main(int argc,char *argv[])
 
 
     /* this "if" for arguments line: ./a.out 1 */
-    int kind;
+    int kind = 0;
     if(argc == 1 ){
         /* clear screen */
         system("clear");
@@ -1712,9 +1693,17 @@ int main(int argc,char *argv[])
     dt=0.001;
 
     ns=5;
-    if (argc >= 3) {
-        if (sscanf(argv[2], "ns=%d", &ns) != 1 || ns < 1) {
-            sprintf(msg, "Optional second argument is ns=<positive integer>, for example ns=1.\n");
+    nangle=70;
+    dangle=1;
+    dAdcigs=25;
+    {
+        const char *keys[] = {"kind", "ns", "nangle", "dangle", "dAdcigs", NULL};
+        if (rtm_unknown_option(argc, argv, keys)
+            || rtm_set_int(argc, argv, "ns", &ns)
+            || rtm_set_int(argc, argv, "nangle", &nangle)
+            || rtm_set_int(argc, argv, "dangle", &dangle)
+            || rtm_set_int(argc, argv, "dAdcigs", &dAdcigs)) {
+            sprintf(msg, "Optional arguments are ns=, nangle=, dangle=, and dAdcigs=, each a positive integer.\n");
             print_error(msg);
             exit(0);
         }
@@ -1722,10 +1711,6 @@ int main(int argc,char *argv[])
     fs=nx/ns/2;
     ds=nx/ns;
     zs=1;
-
-    nangle=70;
-    dangle=1;
-    dAdcigs=25;
 
 
 

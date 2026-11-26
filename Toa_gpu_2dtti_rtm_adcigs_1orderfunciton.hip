@@ -26,15 +26,15 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <hip/hip_runtime.h>
+#include "cpu_backend.h"
 
 #define pi 3.141592653
 
 #define mm 4
 
-__device__ float d0;
+RTM_DEVICE float d0;
 
-__constant__ float c[mm]={1.196289,-0.0797526,0.009570313,-0.0006975447};
+RTM_CONSTANT float c[mm]={1.196289,-0.0797526,0.009570313,-0.0006975447};
 
 //a################################################################################
 void check_gpu_error (const char *msg)
@@ -92,7 +92,7 @@ void laplace_filter(int adj, int nz, int nx, float *in, float *out)
     }
 }
 //a################################################################################
-__global__ void add_source(float pfac,float xsn,float zsn,int nx,int nz,int nnx,int nnz,float dt,float t,
+RTM_GLOBAL void add_source(float pfac,float xsn,float zsn,int nx,int nz,int nnx,int nnz,float dt,float t,
                         float favg,int wtype,int npml,int is,int ds,float *P,float *Q)
 /*< generate ricker wavelet with time deley >*/
 {
@@ -126,7 +126,7 @@ __global__ void add_source(float pfac,float xsn,float zsn,int nx,int nz,int nnx,
 }
 
 /*******************func*********************/
-__global__ void update_vel(int nx,int nz,int nnx,int nnz,int npml,float dt,float dx,float dz,
+RTM_GLOBAL void update_vel(int nx,int nz,int nnx,int nnz,int npml,float dt,float dx,float dz,
                            float *u0,float *w0,float *u1,float *w1,float *P,float *Q,
                            float *coffx1,float *coffx2,float *coffz1,float *coffz2,float *theta)
 {
@@ -162,7 +162,7 @@ __global__ void update_vel(int nx,int nz,int nnx,int nnz,int npml,float dt,float
 }
 
 /*******************func***********************/
-__global__ void update_stress(int nx,int nz,int nnx,int nnz,float dt,float dx,float dz,
+RTM_GLOBAL void update_stress(int nx,int nz,int nnx,int nnz,float dt,float dx,float dz,
                            float *u1,float *w1,float *P,float *Q,float *vp,int npml,
                            float *px1,float *px0,float *pz1,float *pz0,float *qx1,float *qx0,float *qz1,float *qz0,
                            float *acoffx1,float *acoffx2,float *acoffz1,float *acoffz2,
@@ -232,7 +232,7 @@ __global__ void update_stress(int nx,int nz,int nnx,int nnz,float dt,float dx,fl
 }
 
 /********************func**********************/
-__global__ void get_d0(float dx,float dz,int nnx,int nnz,int npml,float *vp)
+RTM_GLOBAL void get_d0(float dx,float dz,int nnx,int nnz,int npml,float *vp)
 {
     d0=3.0*vp[nnx*nnz/2]*log(100000.0)/(2.0*npml*((dx+dz)/2.0));
 }
@@ -291,7 +291,7 @@ void read_file(char FN1[],char FN2[],char FN3[],char FN4[],int nx,int nz,int nnx
 		 fclose(fp4);
 }
 /*************func*******************/
-__global__ void initial_coffe(float dt,int nn,float *coff1,float *coff2,float *acoff1,float *acoff2,int npml)
+RTM_GLOBAL void initial_coffe(float dt,int nn,float *coff1,float *coff2,float *acoff1,float *acoff2,int npml)
 {
     int id=threadIdx.x+blockDim.x*blockIdx.x;
 
@@ -324,7 +324,7 @@ __global__ void initial_coffe(float dt,int nn,float *coff1,float *coff2,float *a
     }
 }
 /*************func*******************/
-__global__ void shot_record(int nnx, int nnz, int nx, int nz, int npml, int it, int nt, float *P, float *shot, bool flag)
+RTM_GLOBAL void shot_record(int nnx, int nnz, int nx, int nz, int npml, int it, int nt, float *P, float *shot, bool flag)
 {
     int id=threadIdx.x+blockDim.x*blockIdx.x;
 
@@ -338,7 +338,7 @@ __global__ void shot_record(int nnx, int nnz, int nx, int nz, int npml, int it, 
     }
 }
 /*************func**************/
-__global__ void mute_directwave(int nx,int nt,float dt,float favg,
+RTM_GLOBAL void mute_directwave(int nx,int nt,float dt,float favg,
                      float dx,float dz,int fs,int ds,int zs,int is,
                      float *vp,float *epsilu,float *theta,float *shot,int tt)
 {
@@ -363,7 +363,7 @@ __global__ void mute_directwave(int nx,int nt,float dt,float favg,
     }
 }
 /*************func*******************/
-__global__ void wavefield_bndr(int nnx, int nnz, int nx, int nz, int npml, int it, int nt,
+RTM_GLOBAL void wavefield_bndr(int nnx, int nnz, int nx, int nz, int npml, int it, int nt,
                                float *P, float *Q, float *P_bndr, float *Q_bndr, bool flag)
 {
     int id=threadIdx.x+blockDim.x*blockIdx.x;
@@ -419,25 +419,25 @@ __global__ void wavefield_bndr(int nnx, int nnz, int nx, int nz, int npml, int i
     }
 }
 /*************func**************/
-__global__ void cal_migration(int nnx, int nnz, int nz, int npml, float *migration, float *s, float *g)
+RTM_GLOBAL void cal_migration(int nnx, int nnz, int nz, int npml, float *migration, float *s, float *g)
 {
     int id=threadIdx.x+blockDim.x*blockIdx.x;
     int ix=id/nz;
     int iz=id%nz;
 
-    if(id<nnx*nnz)
+    if(id<(nnx-2*npml)*nz)
     {
         migration[id]+=s[iz+npml+nnz*(ix+npml)]*g[iz+npml+nnz*(ix+npml)];
     }
 }
 /*************func**************/
-__global__ void cal_illumination(int nnx, int nnz, int nz, int npml, float *illumination, float *P, float *Q)
+RTM_GLOBAL void cal_illumination(int nnx, int nnz, int nz, int npml, float *illumination, float *P, float *Q)
 {
     int id=threadIdx.x+blockDim.x*blockIdx.x;
     int ix=id/nz;
     int iz=id%nz;
 
-    if(id<nnx*nnz)
+    if(id<(nnx-2*npml)*nz)
     {
         illumination[id]+=P[iz+npml+nnz*(ix+npml)]*P[iz+npml+nnz*(ix+npml)]+Q[iz+npml+nnz*(ix+npml)]*Q[iz+npml+nnz*(ix+npml)];
         if(illumination[id]==0)
@@ -445,7 +445,7 @@ __global__ void cal_illumination(int nnx, int nnz, int nz, int npml, float *illu
     }
 }
 /*************func**************/
-__global__ void migration_illum(int nx, int nz, int npml, float *migration, float *illumination)
+RTM_GLOBAL void migration_illum(int nx, int nz, int npml, float *migration, float *illumination)
 {
     int id=threadIdx.x+blockDim.x*blockIdx.x;
 
@@ -455,7 +455,7 @@ __global__ void migration_illum(int nx, int nz, int npml, float *migration, floa
     }
 }
 /*************func**************/
-__global__ void Poynting_Adcigs(int nnz, int nx, int nz, int npml, int na, int da, int dcdp, float *adcigs,
+RTM_GLOBAL void Poynting_Adcigs(int nnz, int nx, int nz, int npml, int na, int da, int dcdp, float *adcigs,
                            float *s_P, float *s_Q, float *s_u, float *s_w,
                            float *g_P, float *g_Q, float *g_u, float *g_w)
 {
@@ -489,7 +489,7 @@ __global__ void Poynting_Adcigs(int nnz, int nx, int nz, int npml, int na, int d
     }
 }
 /*************func**************/
-__global__ void adcigs_illum(int nx, int nz, int na, int da, int dcdp, float *adcigs, float *illumination)
+RTM_GLOBAL void adcigs_illum(int nx, int nz, int na, int da, int dcdp, float *adcigs, float *illumination)
 {
     int id=threadIdx.x+blockDim.x*blockIdx.x;
     int ix=id/(nz*na)*dcdp;
@@ -604,19 +604,23 @@ int main(int argc,char *argv[])
     dt=0.0005;
 
     ns=340;
-    if (argc >= 2) {
-        if (sscanf(argv[1], "ns=%d", &ns) != 1 || ns < 1) {
-            printf("Optional argument is ns=<positive integer>, for example ns=1.\n");
+    na=65;
+    da=1;
+    dcdp=1;
+    {
+        const char *keys[] = {"ns", "na", "da", "dcdp", NULL};
+        if (rtm_unknown_option(argc, argv, keys)
+            || rtm_set_int(argc, argv, "ns", &ns)
+            || rtm_set_int(argc, argv, "na", &na)
+            || rtm_set_int(argc, argv, "da", &da)
+            || rtm_set_int(argc, argv, "dcdp", &dcdp)) {
+            printf("Optional arguments are ns=, na=, da=, and dcdp=, each a positive integer. For example: ns=1\n");
             exit(0);
         }
     }
     fs=nx/ns/2;
     ds=nx/ns;
     zs=1;
-
-    na=65;
-    da=1;
-    dcdp=1;
     /*************v***************/
     nxa=(int)(nx/dcdp);
     nnx=nx+2*npml;
@@ -684,9 +688,9 @@ int main(int argc,char *argv[])
     /******************************/
     check_gpu_error("Failed to allocate memory for variables!");
 
-    get_d0<<<1, 1>>>(dx, dz, nnx, nnz, npml, vp);
-    initial_coffe<<<(nnx+511)/512, 512>>>(dt,nx,coffx1,coffx2,acoffx1,acoffx2,npml);
-    initial_coffe<<<(nnz+511)/512, 512>>>(dt,nz,coffz1,coffz2,acoffz1,acoffz2,npml);
+    RTM_LAUNCH(get_d0, 1, 1, dx, dz, nnx, nnz, npml, vp);
+    RTM_LAUNCH(initial_coffe, (nnx+511)/512, 512, dt,nx,coffx1,coffx2,acoffx1,acoffx2,npml);
+    RTM_LAUNCH(initial_coffe, (nnz+511)/512, 512, dt,nz,coffz1,coffz2,acoffz1,acoffz2,npml);
 
     hipMemset(migration, 0, nz*nx*sizeof(float));
     hipMemset(illumination, 0, nz*nx*sizeof(float));
@@ -730,16 +734,16 @@ int main(int argc,char *argv[])
        /*a#####################a*/
        /*a##     Forward     ##a*/
        /*a#####################a*/
-	 add_source<<<1,1>>>(pfac,fs,zs,nx,nz,nnx,nnz,dt,t,favg,wtype,npml,is,ds,s_P,s_Q);
-        update_vel<<<(nnx*nnz+511)/512, 512>>>(nx,nz,nnx,nnz,npml,dt,dx,dz,s_u0,s_w0,s_u1,s_w1,s_P,s_Q,coffx1,coffx2,coffz1,coffz2,theta);
-        update_stress<<<(nnx*nnz+511)/512, 512>>>(nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
+	 RTM_LAUNCH(add_source, 1, 1, pfac,fs,zs,nx,nz,nnx,nnz,dt,t,favg,wtype,npml,is,ds,s_P,s_Q);
+        RTM_LAUNCH(update_vel, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,npml,dt,dx,dz,s_u0,s_w0,s_u1,s_w1,s_P,s_Q,coffx1,coffx2,coffz1,coffz2,theta);
+        RTM_LAUNCH(update_stress, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
                                                   s_px1,s_px0,s_pz1,s_pz0,s_qx1,s_qx0,s_qz1,s_qz0,
                                                   acoffx1,acoffx2,acoffz1,acoffz2,deta,epsilu,theta,fs,ds,zs,is,true);
         s_u0=s_u1; s_w0=s_w1; s_px0=s_px1; s_pz0=s_pz1; s_qx0=s_qx1; s_qz0=s_qz1;
 
-        shot_record<<<(nx+511)/512, 512>>>(nnx, nnz, nx, nz, npml, it, nt, s_P, shot_Dev, true);
-        wavefield_bndr<<<((2*nx+2*nz)+511)/512,512>>>(nnx, nnz, nx, nz, npml, it, nt, s_P, s_Q, s_P_bndr, s_Q_bndr, true);
-        cal_illumination<<<(nx*nz+511)/512, 512>>>(nnx, nnz, nz, npml, illumination, s_P, s_Q);
+        RTM_LAUNCH(shot_record, (nx+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, s_P, shot_Dev, true);
+        RTM_LAUNCH(wavefield_bndr, ((2*nx+2*nz)+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, s_P, s_Q, s_P_bndr, s_Q_bndr, true);
+        RTM_LAUNCH(cal_illumination, (nx*nz+511)/512, 512, nnx, nnz, nz, npml, illumination, s_P, s_Q);
         /*   if((is==1)&&(it%50==0))
             {
 	       hipMemcpy(e, s_P, nnz*nnx*sizeof(float), hipMemcpyDeviceToHost);
@@ -748,7 +752,7 @@ int main(int argc,char *argv[])
             }   */
      }//it loop end
 
-      mute_directwave<<<(nx*nt+511)/512, 512>>>(nx,nt,dt,favg,dx,dz,fs,ds,zs,is,vp,epsilu,theta,shot_Dev,30);
+      RTM_LAUNCH(mute_directwave, (nx*nt+511)/512, 512, nx,nt,dt,favg,dx,dz,fs,ds,zs,is,vp,epsilu,theta,shot_Dev,30);
       hipMemcpy(shot_Hos, shot_Dev, nt*nx*sizeof(float), hipMemcpyDeviceToHost);
       fseek(fpshot,(is-1)*nt*nx*sizeof(float),0);
       fwrite(shot_Hos,sizeof(float),nt*nx,fpshot);
@@ -759,9 +763,9 @@ int main(int argc,char *argv[])
        /*a#####################a*/
        /*a##  Reconstruction ##a*/
        /*a#####################a*/
-        wavefield_bndr<<<((2*nx+2*nz)+511)/512,512>>>(nnx, nnz, nx, nz, npml, it, nt, s_P, s_Q, s_P_bndr, s_Q_bndr, false);
-        update_vel<<<(nnx*nnz+511)/512, 512>>>(nx,nz,nnx,nnz,npml,dt,dx,dz,s_u0,s_w0,s_u1,s_w1,s_P,s_Q,coffx1,coffx2,coffz1,coffz2,theta);
-        update_stress<<<(nnx*nnz+511)/512, 512>>>(nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
+        RTM_LAUNCH(wavefield_bndr, ((2*nx+2*nz)+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, s_P, s_Q, s_P_bndr, s_Q_bndr, false);
+        RTM_LAUNCH(update_vel, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,npml,dt,dx,dz,s_u0,s_w0,s_u1,s_w1,s_P,s_Q,coffx1,coffx2,coffz1,coffz2,theta);
+        RTM_LAUNCH(update_stress, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,dt,dx,dz,s_u1,s_w1,s_P,s_Q,vp,npml,
                                                   s_px1,s_px0,s_pz1,s_pz0,s_qx1,s_qx0,s_qz1,s_qz0,
                                                   acoffx1,acoffx2,acoffz1,acoffz2,deta,epsilu,theta,fs,ds,zs,is,false);
         s_u0=s_u1; s_w0=s_w1; s_px0=s_px1; s_pz0=s_pz1; s_qx0=s_qx1; s_qz0=s_qz1;
@@ -776,10 +780,10 @@ int main(int argc,char *argv[])
        /*a#####################a*/
        /*a##     Backward    ##a*/
        /*a#####################a*/
-        shot_record<<<(nx+511)/512, 512>>>(nnx, nnz, nx, nz, npml, it, nt, g_P, shot_Dev, false);
-        shot_record<<<(nx+511)/512, 512>>>(nnx, nnz, nx, nz, npml, it, nt, g_Q, shot_Dev, false);
-        update_vel<<<(nnx*nnz+511)/512, 512>>>(nx,nz,nnx,nnz,npml,dt,dx,dz,g_u0,g_w0,g_u1,g_w1,g_P,g_Q,coffx1,coffx2,coffz1,coffz2,theta);
-        update_stress<<<(nnx*nnz+511)/512, 512>>>(nx,nz,nnx,nnz,dt,dx,dz,g_u1,g_w1,g_P,g_Q,vp,npml,
+        RTM_LAUNCH(shot_record, (nx+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, g_P, shot_Dev, false);
+        RTM_LAUNCH(shot_record, (nx+511)/512, 512, nnx, nnz, nx, nz, npml, it, nt, g_Q, shot_Dev, false);
+        RTM_LAUNCH(update_vel, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,npml,dt,dx,dz,g_u0,g_w0,g_u1,g_w1,g_P,g_Q,coffx1,coffx2,coffz1,coffz2,theta);
+        RTM_LAUNCH(update_stress, (nnx*nnz+511)/512, 512, nx,nz,nnx,nnz,dt,dx,dz,g_u1,g_w1,g_P,g_Q,vp,npml,
                                                   g_px1,g_px0,g_pz1,g_pz0,g_qx1,g_qx0,g_qz1,g_qz0,
                                                   acoffx1,acoffx2,acoffz1,acoffz2,deta,epsilu,theta,fs,ds,zs,is,false);
         g_u0=g_u1; g_w0=g_w1; g_px0=g_px1; g_pz0=g_pz1; g_qx0=g_qx1; g_qz0=g_qz1;
@@ -791,9 +795,9 @@ int main(int argc,char *argv[])
               fwrite(e,4L,nnx*nnz,fpsnap);
             }   */
 
-        cal_migration<<<(nx*nz+511)/512, 512>>>(nnx, nnz, nz, npml, migration, s_P, g_P);
+        RTM_LAUNCH(cal_migration, (nx*nz+511)/512, 512, nnx, nnz, nz, npml, migration, s_P, g_P);
 
-        Poynting_Adcigs<<<(nxa*nz+511)/512, 512>>>(nnz, nx, nz, npml, na, da, dcdp, adcigs,
+        RTM_LAUNCH(Poynting_Adcigs, (nxa*nz+511)/512, 512, nnz, nx, nz, npml, na, da, dcdp, adcigs,
                                                        s_P, s_Q, s_u0, s_w0, g_P, g_Q, g_u0, g_w0);
 
 
@@ -803,8 +807,8 @@ int main(int argc,char *argv[])
       printf("%.2f (min)\n", ns, ((float)(is_t1-is_t0))/60.0/CLOCKS_PER_SEC);
     }//is loop end
 
-    migration_illum<<<(nx*nz+511)/512, 512>>>(nx, nz, npml, migration, illumination);
-    adcigs_illum<<<(nxa*nz*na+511)/512, 512>>>(nx, nz, na, da, dcdp, adcigs, illumination);
+    RTM_LAUNCH(migration_illum, (nx*nz+511)/512, 512, nx, nz, npml, migration, illumination);
+    RTM_LAUNCH(adcigs_illum, (nxa*nz*na+511)/512, 512, nx, nz, na, da, dcdp, adcigs, illumination);
 
 
     hipMemcpy(e, migration, nz*nx*sizeof(float), hipMemcpyDeviceToHost);
